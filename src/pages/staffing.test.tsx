@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import App from '../App';
+import staffingStyles from '../staffing-page.css?raw';
 
 function openStaffing() {
   render(<App/>);
@@ -66,5 +67,14 @@ describe('M5 staffing analysis page', () => {
     const e006 = screen.getByRole('row', { name: /E006/ });
     expect(e006).toHaveTextContent('¥16,200');
     expect(screen.getByText(/推荐人数 × ¥900 \/ 场/)).toBeInTheDocument();
+  });
+
+  it('shows parameter values in bold SimHei without a pencil icon', () => {
+    openStaffing();
+    const displayedValue = screen.getByRole('button', { name: '编辑精品率' });
+    expect(displayedValue).toHaveTextContent('60%');
+    expect(displayedValue).not.toHaveTextContent('✎');
+    expect(staffingStyles).toMatch(/\.parameter-value\{[^}]*font-family:"SimHei","黑体",sans-serif[^}]*font-weight:700/);
+    expect(staffingStyles).toMatch(/\.parameter-panel \.parameter-control[^}]*font-family:"SimHei","黑体",sans-serif/);
   });
 });
