@@ -134,6 +134,18 @@ describe('M4 data management page', () => {
     expect(screen.getByText('共 16 行')).toBeInTheDocument();
   });
 
+  it('clears the event demand table in one action and can undo the clear', () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('button', { name: '清空需求表' }));
+    expect(screen.getByText('共 0 行')).toBeInTheDocument();
+    expect(screen.queryByText('E001')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /摄影师供给表/ }));
+    expect(screen.getByText('P001')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '撤回清空' }));
+    expect(screen.getByText('共 6 行')).toBeInTheDocument();
+    expect(screen.getByText('E001')).toBeInTheDocument();
+  });
+
   it('copies a CSV example to the clipboard and imports clipboard text by detected table type', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const restoreClipboard = setClipboard({ readText: vi.fn().mockResolvedValue(''), writeText });

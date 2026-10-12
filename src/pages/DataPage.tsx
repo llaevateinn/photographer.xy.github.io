@@ -31,6 +31,7 @@ export default function DataPage() {
   const [dragging, setDragging] = useState(false);
   const [sort, setSort] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [deletedRecords, setDeletedRecords] = useState<DeletedRecord[]>([]);
+  const [clearedEvents, setClearedEvents] = useState<EventRecord[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const columns: { key: string; label: string; value: (row: Record<string, unknown>) => string }[] = dataset === 'events'
@@ -64,6 +65,7 @@ export default function DataPage() {
       const index = state.events.findIndex((row) => row.event_id === id);
       if (index < 0) return;
       const record = state.events[index];
+      setClearedEvents(null);
       setDeletedRecords((previous) => [...previous, { dataset, record, index }]);
       dispatch({ type: 'events', value: state.events.filter((row) => row.event_id !== id) });
       setToast(`已删除赛事 ${id}，可撤回`);
@@ -92,6 +94,21 @@ export default function DataPage() {
     setToast('已撤回最近一次删除');
   }
 
+  function clearEvents() {
+    if (!state.events.length) return;
+    setClearedEvents(state.events);
+    dispatch({ type: 'events', value: [] });
+    setToast('已清空赛事需求表，可撤回');
+  }
+
+  function undoClearEvents() {
+    if (!clearedEvents) return;
+    dispatch({ type: 'events', value: clearedEvents });
+    setClearedEvents(null);
+    setDataset('events');
+    setToast('已撤回清空，赛事需求表已恢复');
+  }
+
   const addFields = dataset === 'events'
     ? [
       { key: 'event_id', label: '赛事 ID' }, { key: 'city', label: '城市' }, { key: 'event_date', label: '日期', type: 'date' },
@@ -117,6 +134,7 @@ export default function DataPage() {
     if (dataset === 'events') {
       const record = result.rows[0] as EventRecord;
       if (state.events.some((row) => row.event_id === record.event_id)) { setAddError('赛事 ID 已存在，请使用唯一 ID。'); return; }
+      setClearedEvents(null);
       dispatch({ type: 'events', value: [...state.events, record] });
     } else {
       const record = result.rows[0] as Photographer;
@@ -135,9 +153,11 @@ export default function DataPage() {
         const existingIds = new Set(state.events.map((row) => row.event_id));
         const duplicates = result.rows.flatMap((row, index) => existingIds.has(row.event_id) ? [{ row: index + 2, field: 'event_id', reason: `ID 已存在：${row.event_id}` }] : []);
         if (duplicates.length) { setIssues(duplicates); setToast('追加失败，存在重复 ID；现有数据未更改'); return; }
+        setClearedEvents(null);
         dispatch({ type: 'events', value: [...state.events, ...result.rows] });
         setToast(`已在原数据基础上添加 ${result.rows.length} 行`);
       } else {
+        setClearedEvents(null);
         dispatch({ type: 'events', value: result.rows });
         setDeletedRecords((previous) => previous.filter((entry) => entry.dataset !== 'events'));
         setToast(`已替换赛事表（${result.rows.length} 行）`);
@@ -212,11 +232,12 @@ export default function DataPage() {
     protectCurrentState(state);
     dispatch({ type: 'replace', value: defaults });
     setDeletedRecords([]);
+    setClearedEvents(null);
     setConfirmDefault(false); setIssues([]); setToast('已恢复默认数据并完成自动重算');
   }
 
   return <div className="data-page">
-    <div className="section-toolbar"><div className="subtabs" role="tablist" aria-label="数据表类型"><button role="tab" aria-selected={dataset === 'events'} onClick={() => { setDataset('events'); setIssues([]); }}>赛事需求表 <b>{state.events.length}</b></button><button role="tab" aria-selected={dataset === 'photographers'} onClick={() => { setDataset('photographers'); setIssues([]); }}>摄影师供给表 <b>{state.photographers.length}</b></button></div><div className="button-row">{deletedRecords.length > 0 && <button className="button button-secondary undo-delete" onClick={undoDelete}>撤回删除</button>}<label className="import-mode">CSV 导入方式<select aria-label="CSV 导入方式" value={importMode} onChange={(e) => setImportMode(e.target.value as ImportMode)}><option value="replace">替换当前数据</option><option value="append">在原基础上添加</option></select></label><button className="button button-primary" onClick={openAddForm}>{dataset === 'events' ? '新增赛事' : '新增摄影师'}</button><button className="button button-secondary" onClick={() => fileRef.current?.click()}>上传 CSV</button><input ref={fileRef} className="visually-hidden" type="file" accept=".csv,text/csv" aria-label="上传 CSV 文件" onChange={(event) => void acceptFile(event.target.files?.[0])}/><button className="button button-secondary" onClick={() => setPasteOpen(true)}>粘贴 CSV</button><button className="button button-secondary" onClick={downloadCurrent}>下载当前表</button><button className="button button-quiet-danger" onClick={() => setConfirmDefault(true)}>恢复默认</button></div></div>
+    <div className="section-toolbar"><div className="subtabs" role="tablist" aria-label="数据表类型"><button role="tab" aria-selected={dataset === 'events'} onClick={() => { setDataset('events'); setIssues([]); }}>赛事需求表 <b>{state.events.length}</b></button><button role="tab" aria-selected={dataset === 'photographers'} onClick={() => { setDataset('photographers'); setIssues([]); }}>摄影师供给表 <b>{state.photographers.length}</b></button></div><div className="button-row">{clearedEvents && <button className="button button-secondary undo-delete" onClick={undoClearEvents}>撤回清空</button>}{deletedRecords.length > 0 && !clearedEvents && <button className="button button-secondary undo-delete" onClick={undoDelete}>撤回删除</button>}<label className="import-mode">CSV 导入方式<select aria-label="CSV 导入方式" value={importMode} onChange={(e) => setImportMode(e.target.value as ImportMode)}><option value="replace">替换当前数据</option><option value="append">在原基础上添加</option></select></label><button className="button button-primary" onClick={openAddForm}>{dataset === 'events' ? '新增赛事' : '新增摄影师'}</button><button className="button button-secondary" onClick={() => fileRef.current?.click()}>上传 CSV</button><input ref={fileRef} className="visually-hidden" type="file" accept=".csv,text/csv" aria-label="上传 CSV 文件" onChange={(event) => void acceptFile(event.target.files?.[0])}/><button className="button button-secondary" onClick={() => setPasteOpen(true)}>粘贴 CSV</button><button className="button button-secondary" onClick={downloadCurrent}>下载当前表</button>{dataset === 'events' && <button className="button button-quiet-danger" onClick={clearEvents} disabled={!state.events.length}>清空需求表</button>}<button className="button button-quiet-danger" onClick={() => setConfirmDefault(true)}>恢复默认</button></div></div>
     <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''}`} role="region" aria-label="CSV 上传与粘贴区域" tabIndex={0} onPaste={pasteCsv} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}><span className="upload-icon">↑</span><span>将 CSV 文件拖到这里，或点击 <button onClick={() => fileRef.current?.click()}>选择文件</button></span><small>也可聚焦此区域后粘贴复制的 CSV 文本，系统会按表头识别数据类型。</small></div>
     {issues.length > 0 && <section className="validation-panel" role="alert"><div className="validation-title">CSV 校验失败 · 现有数据保持不变</div><ul>{issues.map((issue, index) => <li key={`${issue.row}-${issue.field}-${index}`}>第 {issue.row || '—'} 行 · <b>{issue.field}</b>：{issue.reason}</li>)}</ul></section>}
     <div className="table-heading"><div><h2>{dataset === 'events' ? '赛事需求表' : '摄影师供给表'}</h2><span>当前生效的本地数据 · 可手动删除，删除后可撤回</span></div><span className="row-count">共 {rows.length} 行</span></div>
