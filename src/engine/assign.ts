@@ -1,11 +1,11 @@
 import type { Assignment, EventAssignment, EventRecord, Photographer, StaffingPlan } from '../types';
 
-function score(p: Photographer, event: EventRecord): number {
+function score(p: Photographer, event: EventRecord, budgetPerPerson: number): number {
   const local = p.home_city === event.city ? 100 : 0;
   const rating = p.rating * 10;
   const dormant = Math.min(p.last_active_days, 70) * 0.12;
   const night = event.night_race === 'yes' && p.skill_tags.includes('夜拍') ? 24 : 0;
-  const price = Math.max(0, p.price_per_event - 700) * 0.04;
+  const price = Math.max(0, p.price_per_event - budgetPerPerson) * 0.04;
   return local + rating + dormant + night - price;
 }
 
@@ -20,10 +20,12 @@ export function assignPhotographers(events: EventRecord[], photographers: Photog
   const assignedByDate = new Map<string, Set<string>>();
   const planMap = new Map(plans.map((plan) => [plan.event.event_id, plan]));
   return [...events].sort((a, b) => a.event_date.localeCompare(b.event_date) || a.event_id.localeCompare(b.event_id)).map((event) => {
-    const target = planMap.get(event.event_id)?.recommended ?? 0;
+    const plan = planMap.get(event.event_id);
+    const target = plan?.recommended ?? 0;
+    const budgetPerPerson = target > 0 && plan ? plan.budget / target : 700;
     const usedToday = assignedByDate.get(event.event_date) ?? new Set<string>();
     const candidates = photographers.filter((p) => p.available === 'yes' && !usedToday.has(p.photographer_id)
-      && !(p.rating < 3.5 && event.difficulty >= 4)).sort((a, b) => score(b, event) - score(a, event));
+      && !(p.rating < 3.5 && event.difficulty >= 4)).sort((a, b) => score(b, event, budgetPerPerson) - score(a, event, budgetPerPerson));
     const picked = candidates.slice(0, target);
     for (const p of picked) usedToday.add(p.photographer_id);
     assignedByDate.set(event.event_date, usedToday);
@@ -33,6 +35,6 @@ export function assignPhotographers(events: EventRecord[], photographers: Photog
       crossCity: p.home_city !== event.city, reason: explain(p, event),
     }));
     const cost = assignments.reduce((sum, row) => sum + row.price_per_event, 0);
-    return { event, recommended: target, assignments, shortage: Math.max(0, target - picked.length), cost, budget: target * 700 };
+    return { event, recommended: target, assignments, shortage: Math.max(0, target - picked.length), cost, budget: plan?.budget ?? target * 700 };
   });
 }

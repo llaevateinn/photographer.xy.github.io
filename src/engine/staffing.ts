@@ -14,13 +14,13 @@ export function calculateStaffing(events: EventRecord[], params: Params): Staffi
     steps.push(`摄影师单人有效产能 = ${event.time_window_hours} × ${params.raw_photos_per_hour} × ${params.usable_rate}${factors.map((f) => ` × ${f.value}（${f.label}）`).join('')} = ${usable.toFixed(2)} 张`);
     const recommended = Math.ceil(target / usable);
     steps.push(`推荐人数 = ceil(${target.toFixed(2)} ÷ ${usable.toFixed(2)}) = ${recommended} 人`);
-    steps.push(`预计成本 = ${recommended} × ¥700 = ¥${recommended * 700}`);
+    steps.push(`预算上限 = ${recommended} × ¥${params.budget_per_photographer} = ¥${recommended * params.budget_per_photographer}`);
     const baselineUsable = event.time_window_hours * DEFAULT_PARAMS.raw_photos_per_hour * DEFAULT_PARAMS.usable_rate
       * (event.night_race === 'yes' ? DEFAULT_PARAMS.night_factor : 1)
       * (event.difficulty >= 4 ? DEFAULT_PARAMS.high_difficulty_factor : 1)
       * (event.course_km >= 42 ? DEFAULT_PARAMS.marathon_factor : 1);
     const baseline = Math.ceil(event.participants * DEFAULT_PARAMS.coverage_rate * DEFAULT_PARAMS.photos_per_covered_user / baselineUsable);
-    const budget = recommended * 700;
+    const budget = recommended * params.budget_per_photographer;
     return { event, recommended, baseline, estimatedCost: budget, budget, overBudget: false, calculation: steps };
   });
 }

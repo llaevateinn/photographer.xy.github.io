@@ -21,6 +21,13 @@ describe('M2 calculation and scheduling engines', () => {
     expect(changed.every((row, index) => row.recommended >= plans[index].recommended)).toBe(true);
   });
 
+  it('uses the configurable per-person event budget in both demand and assignment plans', () => {
+    const adjusted = calculateStaffing(BUILTIN_EVENTS, { ...DEFAULT_PARAMS, budget_per_photographer: 900 });
+    expect(adjusted[0].budget).toBe(adjusted[0].recommended * 900);
+    expect(adjusted[0].calculation.at(-1)).toContain(`¥${adjusted[0].recommended * 900}`);
+    expect(assignPhotographers(BUILTIN_EVENTS, BUILTIN_PHOTOGRAPHERS, adjusted)[0].budget).toBe(adjusted[0].recommended * 900);
+  });
+
   it('never assigns unavailable, low-rated high-difficulty, or same-day duplicate photographers', () => {
     const all = schedules.flatMap((schedule) => schedule.assignments.map((a) => ({ ...a, date: schedule.event.event_date, difficulty: schedule.event.difficulty })));
     expect(all.every((a) => BUILTIN_PHOTOGRAPHERS.find((p) => p.photographer_id === a.photographer_id)?.available === 'yes')).toBe(true);

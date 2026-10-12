@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILTIN_EVENTS, BUILTIN_PHOTOGRAPHERS, DEFAULT_PARAMS, makeDefaultState } from '../data/builtin';
 import { parseEventsCsv, parsePhotographersCsv, stringifyCsv } from './csv';
 import { deleteSnapshot, exportArchive, importArchive, listSnapshots, protectCurrentState, renameSnapshot, restoreSnapshot, saveSnapshot } from './archive';
-import { createDebouncedSave, loadState, saveState } from './storage';
+import { createDebouncedSave, loadState, saveState, STATE_KEY } from './storage';
 
 const eventCsv = 'event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nE1,广州,2026-10-01,1000,10,2,no,3';
 const photoCsv = 'photographer_id,home_city,price_per_event,rating,last_active_days,skill_tags,available\nP1,广州,600,4.2,10,跑步|夜拍,yes';
@@ -52,6 +52,14 @@ describe('M1 persistence and archive functions', () => {
     vi.advanceTimersByTime(1);
     expect(onSaved).toHaveBeenCalledOnce();
     vi.useRealTimers();
+  });
+
+  it('migrates saved states created before the configurable budget was added', () => {
+    const legacy = JSON.parse(JSON.stringify(makeDefaultState())) as { params: Record<string, unknown> } & Record<string, unknown>;
+    delete legacy.params.budget_per_photographer;
+    localStorage.setItem(STATE_KEY, JSON.stringify(legacy));
+    expect(loadState().events).toHaveLength(6);
+    expect(loadState().params.budget_per_photographer).toBe(700);
   });
 
   it('saves, protects, restores, renames, deletes and imports/exports snapshots', () => {

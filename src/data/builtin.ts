@@ -36,6 +36,7 @@ export const DEFAULT_PARAMS: Params = {
   night_factor: 0.85,
   high_difficulty_factor: 0.9,
   marathon_factor: 0.95,
+  budget_per_photographer: 700,
 };
 
 export function makeDefaultState(): AppState {

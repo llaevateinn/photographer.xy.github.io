@@ -1,5 +1,5 @@
-import type { AppState } from '../types';
-import { makeDefaultState } from '../data/builtin';
+import type { AppState, Params } from '../types';
+import { DEFAULT_PARAMS, makeDefaultState } from '../data/builtin';
 
 export const STATE_KEY = 'ayd_state_v1';
 export const SNAPSHOTS_KEY = 'ayd_snapshots_v1';
@@ -29,12 +29,21 @@ export function validateAppState(value: unknown): value is AppState {
         && Array.isArray(row.skill_tags) && row.skill_tags.every((tag) => typeof tag === 'string')
         && ['yes', 'no'].includes(String(row.available));
     }) && new Set(state.photographers.map((person) => person.photographer_id)).size === state.photographers.length
-    && !!params && ['coverage_rate', 'photos_per_covered_user', 'usable_rate', 'raw_photos_per_hour', 'night_factor', 'high_difficulty_factor', 'marathon_factor']
+    && !!params && ['coverage_rate', 'photos_per_covered_user', 'usable_rate', 'raw_photos_per_hour', 'night_factor', 'high_difficulty_factor', 'marathon_factor', 'budget_per_photographer']
       .every((key) => typeof params[key as keyof typeof params] === 'number' && Number.isFinite(params[key as keyof typeof params]))
-    && Object.values(params).every((n) => typeof n === 'number' && n > 0)
+    && Object.entries(params).every(([key, n]) => typeof n === 'number' && (key === 'budget_per_photographer' ? n >= 0 : n > 0))
     && !!state.scriptEdits && typeof state.scriptEdits === 'object' && !Array.isArray(state.scriptEdits)
     && Object.values(state.scriptEdits).every((script) => typeof script === 'string')
     && (state.savedAt === null || typeof state.savedAt === 'string');
+}
+
+export function normalizeAppState(value: unknown): AppState | null {
+  if (validateAppState(value)) return value;
+  if (!value || typeof value !== 'object') return null;
+  const legacy = value as Partial<AppState>;
+  if (legacy.version !== 1 || !legacy.params || typeof legacy.params !== 'object' || 'budget_per_photographer' in legacy.params) return null;
+  const migrated = { ...legacy, params: { ...DEFAULT_PARAMS, ...(legacy.params as Partial<Params>) } };
+  return validateAppState(migrated) ? migrated : null;
 }
 
 export function loadState(): AppState {
@@ -42,7 +51,7 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STATE_KEY);
     if (!raw) return makeDefaultState();
     const value: unknown = JSON.parse(raw);
-    return validateAppState(value) ? value : makeDefaultState();
+    return normalizeAppState(value) ?? makeDefaultState();
   } catch { return makeDefaultState(); }
 }
 

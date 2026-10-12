@@ -29,6 +29,7 @@ export interface Params {
   night_factor: number;
   high_difficulty_factor: number;
   marathon_factor: number;
+  budget_per_photographer: number;
 }
 
 export interface AppState {

@@ -1,5 +1,5 @@
 import type { AppState, Snapshot } from '../types';
-import { SNAPSHOTS_KEY, validateAppState } from './storage';
+import { SNAPSHOTS_KEY, normalizeAppState } from './storage';
 
 export function listSnapshots(): Snapshot[] {
   try { const value: unknown = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) ?? '[]'); return Array.isArray(value) ? value as Snapshot[] : []; }
@@ -21,8 +21,9 @@ export function protectCurrentState(state: AppState): Snapshot { return saveSnap
 
 export function restoreSnapshot(id: string): AppState | null {
   const snapshot = listSnapshots().find((item) => item.id === id);
-  if (!snapshot || !validateAppState(snapshot.payload)) return null;
-  return structuredClone(snapshot.payload);
+  const state = snapshot ? normalizeAppState(snapshot.payload) : null;
+  if (!state) return null;
+  return structuredClone(state);
 }
 
 export function renameSnapshot(id: string, name: string): boolean {
@@ -42,7 +43,8 @@ export function exportArchive(state: AppState): string { return JSON.stringify({
 export function importArchive(text: string): { ok: true; state: AppState } | { ok: false; reason: string } {
   try {
     const value = JSON.parse(text) as { format?: unknown; version?: unknown; state?: unknown };
-    if (value?.format !== 'ayd-archive' || value.version !== 1 || !validateAppState(value.state)) return { ok: false, reason: '存档格式或版本无效' };
-    return { ok: true, state: structuredClone(value.state) };
+    const state = normalizeAppState(value.state);
+    if (value?.format !== 'ayd-archive' || value.version !== 1 || !state) return { ok: false, reason: '存档格式或版本无效' };
+    return { ok: true, state: structuredClone(state) };
   } catch { return { ok: false, reason: 'JSON 文件无法解析' }; }
 }

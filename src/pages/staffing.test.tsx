@@ -50,4 +50,12 @@ describe('M5 staffing analysis page', () => {
     fireEvent.change(input, { target: { value: '1.5' } });
     expect(input).toHaveValue(0.5);
   });
+
+  it('adjusts the per-person event budget and updates the demand table', () => {
+    openStaffing();
+    fireEvent.change(screen.getByRole('spinbutton', { name: '每人每场预算' }), { target: { value: '900' } });
+    const e006 = screen.getByRole('row', { name: /E006/ });
+    expect(e006).toHaveTextContent('¥16,200');
+    expect(screen.getByText(/推荐人数 × ¥900 \/ 场/)).toBeInTheDocument();
+  });
 });
