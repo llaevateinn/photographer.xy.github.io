@@ -5,8 +5,8 @@
 ## 环境要求
 
 - Windows、macOS 或 Linux 桌面环境
-- Node.js 18 或更高版本（建议使用 Node.js 20 LTS）
-- pnpm 9 或更高版本
+- Node.js 20.19 或更高版本（建议使用 Node.js 24）
+- pnpm 11.25.0 或更高版本
 
 本项目为 JavaScript/TypeScript 项目，依赖由 `package.json` 声明、`pnpm-lock.yaml` 锁定。`requirements.txt` 是便于评审查看的工具与依赖清单，不是 Python/pip 清单。
 
@@ -25,7 +25,7 @@ pnpm dev -- --host 127.0.0.1 --port 5173
 
 ```bash
 corepack enable
-corepack prepare pnpm@9 --activate
+corepack prepare pnpm@11.25.0 --activate
 pnpm install --frozen-lockfile
 ```
 
