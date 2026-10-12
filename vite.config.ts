@@ -1,8 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
+const testSetup = fileURLToPath(new URL('./src/test/setup.ts', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   server: { host: '0.0.0.0' },
-  test: { environment: 'jsdom', setupFiles: './src/test/setup.ts', css: true },
+  test: { environment: 'jsdom', setupFiles: resolve(testSetup), css: true },
 });

@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.vite/
 
 # Local editor and operating system files
 .DS_Store

@@ -1,0 +1,3 @@
+event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty
+DEMO-E901,广州,2026-12-06,3200,21,3,no,3
+DEMO-E902,深圳,2026-12-13,4800,42,4,yes,4
