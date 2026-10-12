@@ -1,0 +1,28 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import App from '../App';
+
+describe('M4 data management page', () => {
+  it('reports row-level CSV errors and keeps the prior event table intact', async () => {
+    render(<App/>);
+    expect(screen.getByText('E001')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '粘贴 CSV' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'CSV 内容' }), { target: { value: 'event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nEX,广州,2026-11-01,oops,42,4,no,4' } });
+    fireEvent.click(screen.getByRole('button', { name: '校验并替换' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('第 2 行');
+    expect(screen.getByText('E001')).toBeInTheDocument();
+    expect(screen.queryByText('EX')).not.toBeInTheDocument();
+  });
+
+  it('replaces a valid pasted CSV, recalculates the page and switches input tables', async () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('button', { name: '粘贴 CSV' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'CSV 内容' }), { target: { value: 'event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nEX,广州,2026-11-01,1200,21,3,no,3' } });
+    fireEvent.click(screen.getByRole('button', { name: '校验并替换' }));
+    await waitFor(() => expect(screen.getByText('EX')).toBeInTheDocument());
+    expect(screen.getByText('共 1 行')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /摄影师供给表/ }));
+    expect(screen.getByText('P001')).toBeInTheDocument();
+    expect(screen.getByText('共 16 行')).toBeInTheDocument();
+  });
+});
