@@ -106,4 +106,25 @@ describe('M4 data management page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('ID 已存在：E001');
     expect(screen.getByText('共 7 行')).toBeInTheDocument();
   });
+
+  it('deletes an event and restores it with the undo action', () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('button', { name: '删除赛事 E001' }));
+    expect(screen.queryByText('E001')).not.toBeInTheDocument();
+    expect(screen.getByText('共 5 行')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '撤回删除' }));
+    expect(screen.getByText('E001')).toBeInTheDocument();
+    expect(screen.getByText('共 6 行')).toBeInTheDocument();
+  });
+
+  it('deletes and restores a photographer row as well', () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('tab', { name: /摄影师供给表/ }));
+    fireEvent.click(screen.getByRole('button', { name: '删除摄影师 P001' }));
+    expect(screen.queryByText('P001')).not.toBeInTheDocument();
+    expect(screen.getByText('共 15 行')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '撤回删除' }));
+    expect(screen.getByText('P001')).toBeInTheDocument();
+    expect(screen.getByText('共 16 行')).toBeInTheDocument();
+  });
 });
