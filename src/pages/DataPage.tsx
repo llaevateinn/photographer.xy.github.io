@@ -86,25 +86,32 @@ export default function DataPage() {
   }
 
   function importText(text: string) {
-    const result = dataset === 'events' ? parseEventsCsv(text) : parsePhotographersCsv(text);
-    if (!result.ok) { setIssues(result.issues); setToast('CSV 校验失败，现有数据未更改'); return; }
-    if (importMode === 'append') {
-      if (dataset === 'events') {
+    if (dataset === 'events') {
+      const result = parseEventsCsv(text);
+      if (!result.ok) { setIssues(result.issues); setToast('CSV 校验失败，现有数据未更改'); return; }
+      if (importMode === 'append') {
         const existingIds = new Set(state.events.map((row) => row.event_id));
         const duplicates = result.rows.flatMap((row, index) => existingIds.has(row.event_id) ? [{ row: index + 2, field: 'event_id', reason: `ID 已存在：${row.event_id}` }] : []);
         if (duplicates.length) { setIssues(duplicates); setToast('追加失败，存在重复 ID；现有数据未更改'); return; }
         dispatch({ type: 'events', value: [...state.events, ...result.rows] });
+        setToast(`已在原数据基础上添加 ${result.rows.length} 行`);
       } else {
+        dispatch({ type: 'events', value: result.rows });
+        setToast(`已替换赛事表（${result.rows.length} 行）`);
+      }
+    } else {
+      const result = parsePhotographersCsv(text);
+      if (!result.ok) { setIssues(result.issues); setToast('CSV 校验失败，现有数据未更改'); return; }
+      if (importMode === 'append') {
         const existingIds = new Set(state.photographers.map((row) => row.photographer_id));
         const duplicates = result.rows.flatMap((row, index) => existingIds.has(row.photographer_id) ? [{ row: index + 2, field: 'photographer_id', reason: `ID 已存在：${row.photographer_id}` }] : []);
         if (duplicates.length) { setIssues(duplicates); setToast('追加失败，存在重复 ID；现有数据未更改'); return; }
         dispatch({ type: 'photographers', value: [...state.photographers, ...result.rows] });
+        setToast(`已在原数据基础上添加 ${result.rows.length} 行`);
+      } else {
+        dispatch({ type: 'photographers', value: result.rows });
+        setToast(`已替换摄影师表（${result.rows.length} 行）`);
       }
-      setToast(`已在原数据基础上添加 ${result.rows.length} 行`);
-    } else {
-      if (dataset === 'events') dispatch({ type: 'events', value: result.rows as never });
-      else dispatch({ type: 'photographers', value: result.rows as never });
-      setToast(`已替换${dataset === 'events' ? '赛事' : '摄影师'}表（${result.rows.length} 行）`);
     }
     setIssues([]);
     setPasteOpen(false); setPasteValue('');
