@@ -83,4 +83,27 @@ describe('M4 data management page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('ID 已存在');
     expect(screen.getByText('共 17 行')).toBeInTheDocument();
   });
+
+  it('appends an uploaded CSV to the current event table when append mode is selected', async () => {
+    render(<App/>);
+    fireEvent.change(screen.getByLabelText('CSV 导入方式'), { target: { value: 'append' } });
+    const file = new File(
+      ['event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nEX,佛山,2026-12-01,3000,10,2,no,2'],
+      'events.csv',
+      { type: 'text/csv' },
+    );
+    fireEvent.change(screen.getByLabelText('上传 CSV 文件'), { target: { files: [file] } });
+    expect(await screen.findByText('EX')).toBeInTheDocument();
+    expect(screen.getByText('E001')).toBeInTheDocument();
+    expect(screen.getByText('共 7 行')).toBeInTheDocument();
+
+    const duplicate = new File(
+      ['event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nE001,佛山,2026-12-02,3000,10,2,no,2'],
+      'duplicate.csv',
+      { type: 'text/csv' },
+    );
+    fireEvent.change(screen.getByLabelText('上传 CSV 文件'), { target: { files: [duplicate] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('ID 已存在：E001');
+    expect(screen.getByText('共 7 行')).toBeInTheDocument();
+  });
 });
