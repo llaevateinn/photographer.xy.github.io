@@ -18,6 +18,9 @@ export default function StaffingPage() {
   const { state, dispatch, staffing } = useAppState();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [editingParameter, setEditingParameter] = useState<string | null>(null);
+  const [parameterDraft, setParameterDraft] = useState('');
+  const [invalidParameter, setInvalidParameter] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: 'event_id' | 'city' | 'event_date' | 'recommended' | 'estimatedCost' | 'budget' | 'overBudget'; direction: 'ascending' | 'descending' } | null>(null);
   const modified = Object.keys(DEFAULT_PARAMS).some((key) => state.params[key as keyof typeof DEFAULT_PARAMS] !== DEFAULT_PARAMS[key as keyof typeof DEFAULT_PARAMS]);
   const sortedStaffing = sort ? [...staffing].sort((left, right) => {
@@ -29,6 +32,15 @@ export default function StaffingPage() {
 
   function toggleSort(key: NonNullable<typeof sort>['key']) {
     setSort((current) => ({ key, direction: current?.key === key && current.direction === 'ascending' ? 'descending' : 'ascending' }));
+  }
+
+  function confirmParameter(control: typeof controls[number]) {
+    const next = Number(parameterDraft);
+    if (!parameterDraft.trim() || !Number.isFinite(next) || next < control.min || next > control.max) {
+      setInvalidParameter(control.key); return;
+    }
+    dispatch({ type: 'params', value: { ...state.params, [control.key]: next } });
+    setInvalidParameter(null); setEditingParameter(null);
   }
 
   function download() {
@@ -44,7 +56,9 @@ export default function StaffingPage() {
       {controls.map((control) => {
         const key = control.key as keyof typeof state.params;
         const value = state.params[key];
-        return <label className="parameter-control" key={control.key}><span><b>{control.title}</b><strong>{control.format(value)}</strong></span><input aria-label={control.title} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => dispatch({ type: 'params', value: { ...state.params, [control.key]: Number(e.target.value) } })}/><span className="parameter-manual-entry"><input aria-label={`${control.title}数值`} type="number" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => { const next = Number(e.target.value); if (e.target.value !== '' && Number.isFinite(next) && next >= control.min && next <= control.max) dispatch({ type: 'params', value: { ...state.params, [control.key]: next } }); }}/><small>可直接输入 {control.min}–{control.max}</small></span><small>{control.reason}</small></label>;
+        return <div className="parameter-control" key={control.key}><span className="parameter-control-heading"><b>{control.title}</b>{editingParameter === control.key
+          ? <input autoFocus aria-label={`${control.title}数值`} aria-invalid={invalidParameter === control.key} type="number" min={control.min} max={control.max} step={control.step} value={parameterDraft} onChange={(e) => { setParameterDraft(e.target.value); setInvalidParameter(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmParameter(control); } else if (e.key === 'Escape') { setInvalidParameter(null); setEditingParameter(null); } }} onBlur={() => { if (editingParameter === control.key) { setInvalidParameter(null); setEditingParameter(null); } }}/>
+          : <button className="parameter-value" type="button" aria-label={`编辑${control.title}`} onClick={() => { setParameterDraft(String(value)); setInvalidParameter(null); setEditingParameter(control.key); }}>{control.format(value)}<span aria-hidden="true"> ✎</span></button>}</span><input aria-label={control.title} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => dispatch({ type: 'params', value: { ...state.params, [control.key]: Number(e.target.value) } })}/><small>{control.reason}</small></div>;
       })}
       <div className="assumption-note"><b>预算口径</b><label>每人每场预算 <span>¥ <input aria-label="每人每场预算" type="number" min="0" max="100000" step="50" value={state.params.budget_per_photographer} onChange={(e) => { const next = Number(e.target.value); if (e.target.value !== '' && Number.isFinite(next) && next >= 0 && next <= 100000) dispatch({ type: 'params', value: { ...state.params, budget_per_photographer: next } }); }}/></span></label><span>推荐人数 × ¥{state.params.budget_per_photographer.toLocaleString()} / 场</span><small>单人预算会同步影响测算表、排班预算与总览；实际排班成本仍按摄影师报价计算。</small></div>
       <button className="button button-secondary reset-params" onClick={() => dispatch({ type: 'params', value: { ...DEFAULT_PARAMS } })}>恢复默认参数</button>

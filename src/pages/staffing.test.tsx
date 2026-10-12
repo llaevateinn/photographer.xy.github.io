@@ -38,17 +38,26 @@ describe('M5 staffing analysis page', () => {
     expect(table.querySelector('thead th:nth-child(3)')).toHaveAttribute('aria-sort', 'descending');
   });
 
-  it('accepts a manual parameter value, synchronizes the slider and recalculates results', () => {
+  it('edits a displayed parameter inline, confirms with Enter and keeps the slider synchronized', () => {
     openStaffing();
     const initial = screen.getByRole('row', { name: /E006/ }).textContent;
+    fireEvent.click(screen.getByRole('button', { name: '编辑精品率' }));
     const input = screen.getByRole('spinbutton', { name: '精品率数值' });
     fireEvent.change(input, { target: { value: '0.5' } });
-    expect(input).toHaveValue(0.5);
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    expect(screen.queryByRole('spinbutton', { name: '精品率数值' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '编辑精品率' })).toHaveTextContent('50%');
     expect(screen.getByRole('slider', { name: '精品率' })).toHaveValue('0.5');
     expect(screen.getByRole('row', { name: /E006/ }).textContent).not.toBe(initial);
 
-    fireEvent.change(input, { target: { value: '1.5' } });
-    expect(input).toHaveValue(0.5);
+    fireEvent.click(screen.getByRole('button', { name: '编辑精品率' }));
+    const invalidInput = screen.getByRole('spinbutton', { name: '精品率数值' });
+    fireEvent.change(invalidInput, { target: { value: '1.5' } });
+    fireEvent.keyDown(invalidInput, { key: 'Enter', code: 'Enter' });
+    expect(invalidInput).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('slider', { name: '精品率' })).toHaveValue('0.5');
+    fireEvent.keyDown(invalidInput, { key: 'Escape', code: 'Escape' });
+    expect(screen.queryByRole('spinbutton', { name: '精品率数值' })).not.toBeInTheDocument();
   });
 
   it('adjusts the per-person event budget and updates the demand table', () => {
