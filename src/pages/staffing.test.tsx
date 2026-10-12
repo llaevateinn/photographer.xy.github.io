@@ -37,4 +37,17 @@ describe('M5 staffing analysis page', () => {
     fireEvent.click(screen.getByRole('button', { name: '按推荐人数排序' }));
     expect(table.querySelector('thead th:nth-child(3)')).toHaveAttribute('aria-sort', 'descending');
   });
+
+  it('accepts a manual parameter value, synchronizes the slider and recalculates results', () => {
+    openStaffing();
+    const initial = screen.getByRole('row', { name: /E006/ }).textContent;
+    const input = screen.getByRole('spinbutton', { name: '精品率数值' });
+    fireEvent.change(input, { target: { value: '0.5' } });
+    expect(input).toHaveValue(0.5);
+    expect(screen.getByRole('slider', { name: '精品率' })).toHaveValue('0.5');
+    expect(screen.getByRole('row', { name: /E006/ }).textContent).not.toBe(initial);
+
+    fireEvent.change(input, { target: { value: '1.5' } });
+    expect(input).toHaveValue(0.5);
+  });
 });

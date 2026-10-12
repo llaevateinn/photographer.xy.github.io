@@ -40,11 +40,11 @@ export default function StaffingPage() {
   }
 
   return <div className="staffing-page">
-    <div className="staffing-layout"><aside className="parameter-panel"><div className="parameter-heading"><div><h2>测算参数</h2><span>拖动滑块实时查看人数变化</span></div>{modified && <Badge tone="orange">已修改</Badge>}</div>
+    <div className="staffing-layout"><aside className="parameter-panel"><div className="parameter-heading"><div><h2>测算参数</h2><span>拖动滑块或输入数值，实时查看人数变化</span></div>{modified && <Badge tone="orange">已修改</Badge>}</div>
       {controls.map((control) => {
         const key = control.key as keyof typeof state.params;
         const value = state.params[key];
-        return <label className="parameter-control" key={control.key}><span><b>{control.title}</b><strong>{control.format(value)}</strong></span><input aria-label={control.title} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => dispatch({ type: 'params', value: { ...state.params, [control.key]: Number(e.target.value) } })}/><small>{control.reason}</small></label>;
+        return <label className="parameter-control" key={control.key}><span><b>{control.title}</b><strong>{control.format(value)}</strong></span><input aria-label={control.title} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => dispatch({ type: 'params', value: { ...state.params, [control.key]: Number(e.target.value) } })}/><span className="parameter-manual-entry"><input aria-label={`${control.title}数值`} type="number" min={control.min} max={control.max} step={control.step} value={value} onChange={(e) => { const next = Number(e.target.value); if (e.target.value !== '' && Number.isFinite(next) && next >= control.min && next <= control.max) dispatch({ type: 'params', value: { ...state.params, [control.key]: next } }); }}/><small>可直接输入 {control.min}–{control.max}</small></span><small>{control.reason}</small></label>;
       })}
       <div className="assumption-note"><b>预算口径</b><span>推荐人数 × ¥700 / 场</span><small>此版本按固定单人预算估算，与摄影师实际报价排班成本分开展示。</small></div>
       <button className="button button-secondary reset-params" onClick={() => dispatch({ type: 'params', value: { ...DEFAULT_PARAMS } })}>恢复默认参数</button>
