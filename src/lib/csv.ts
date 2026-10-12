@@ -14,6 +14,18 @@ const photographerSpec: FieldSpec[] = [
   { name: 'skill_tags', split: true }, { name: 'available', choice: ['yes', 'no'] },
 ];
 
+export type CsvDataset = 'events' | 'photographers';
+
+export function detectCsvDataset(text: string): CsvDataset | null {
+  const parsed = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), {
+    header: true, preview: 1, skipEmptyLines: 'greedy', transformHeader: (header) => header.trim(),
+  });
+  const headers = new Set(parsed.meta.fields ?? []);
+  if (headers.has('event_id') && !headers.has('photographer_id')) return 'events';
+  if (headers.has('photographer_id') && !headers.has('event_id')) return 'photographers';
+  return null;
+}
+
 function parseTable<T>(text: string, spec: FieldSpec[], convert: (cells: Record<string, string>) => T): CsvResult<T> {
   const parsed = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: 'greedy', transformHeader: (h) => h.trim() });
   const issues: CsvIssue[] = [];

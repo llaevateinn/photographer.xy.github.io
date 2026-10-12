@@ -1,6 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from '../App';
+
+function setClipboard(clipboard: { readText: () => Promise<string>; writeText: (text: string) => Promise<void> }) {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+  return () => original ? Object.defineProperty(navigator, 'clipboard', original) : Reflect.deleteProperty(navigator, 'clipboard');
+}
 
 describe('M4 data management page', () => {
   it('reports row-level CSV errors and keeps the prior event table intact', async () => {
@@ -126,5 +132,45 @@ describe('M4 data management page', () => {
     fireEvent.click(screen.getByRole('button', { name: '撤回删除' }));
     expect(screen.getByText('P001')).toBeInTheDocument();
     expect(screen.getByText('共 16 行')).toBeInTheDocument();
+  });
+
+  it('copies a CSV example to the clipboard and imports clipboard text by detected table type', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const restoreClipboard = setClipboard({ readText: vi.fn().mockResolvedValue(''), writeText });
+    try {
+      render(<App/>);
+      fireEvent.click(screen.getByRole('button', { name: '粘贴 CSV' }));
+      fireEvent.click(screen.getByRole('button', { name: '复制 CSV 示例' }));
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('event_id,city,event_date,participants'));
+    } finally {
+      restoreClipboard();
+    }
+  });
+
+  it('reads copied photographer CSV from the clipboard, identifies it and imports to that table', async () => {
+    const csv = 'photographer_id,home_city,price_per_event,rating,last_active_days,skill_tags,available\nP017,佛山,800,4.6,3,跑步|冲线,yes';
+    const restoreClipboard = setClipboard({ readText: vi.fn().mockResolvedValue(csv), writeText: vi.fn().mockResolvedValue(undefined) });
+    try {
+      render(<App/>);
+      fireEvent.click(screen.getByRole('button', { name: '粘贴 CSV' }));
+      fireEvent.click(screen.getByRole('button', { name: '从剪贴板读取' }));
+      expect(await screen.findByText('识别为摄影师供给表')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'CSV 内容' })).toHaveValue(csv);
+      fireEvent.click(screen.getByRole('button', { name: '校验并替换' }));
+      expect(await screen.findByText('P017')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /摄影师供给表/ })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('共 1 行')).toBeInTheDocument();
+    } finally {
+      restoreClipboard();
+    }
+  });
+
+  it('accepts Ctrl+V on the upload area and auto-detects the pasted CSV table', async () => {
+    const csv = 'photographer_id,home_city,price_per_event,rating,last_active_days,skill_tags,available\nP017,佛山,800,4.6,3,跑步|冲线,yes';
+    render(<App/>);
+    fireEvent.paste(screen.getByRole('region', { name: 'CSV 上传与粘贴区域' }), { clipboardData: { getData: () => csv } });
+    expect(await screen.findByText('P017')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /摄影师供给表/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('共 1 行')).toBeInTheDocument();
   });
 });
