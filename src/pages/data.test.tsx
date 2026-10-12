@@ -37,4 +37,50 @@ describe('M4 data management page', () => {
     expect(table.querySelector('tbody tr')?.textContent).toContain('E006');
     expect(table.querySelector('thead th:nth-child(5)')).toHaveAttribute('aria-sort', 'descending');
   });
+
+  it('manually adds a validated event without replacing existing events', async () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('button', { name: '新增赛事' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '赛事 ID' }), { target: { value: 'MANUAL-1' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '城市' }), { target: { value: '佛山' } });
+    fireEvent.change(screen.getByLabelText('日期'), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText('参赛人数'), { target: { value: '3000' } });
+    fireEvent.change(screen.getByLabelText('赛道 km'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('拍摄时长'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('夜跑'), { target: { value: 'no' } });
+    fireEvent.change(screen.getByLabelText('难度'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存赛事' }));
+
+    expect(await screen.findByText('MANUAL-1')).toBeInTheDocument();
+    expect(screen.getByText('共 7 行')).toBeInTheDocument();
+    expect(screen.getByText('E001')).toBeInTheDocument();
+  });
+
+  it('manually adds a photographer and rejects an ID that already exists', async () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('tab', { name: /摄影师供给表/ }));
+    fireEvent.click(screen.getByRole('button', { name: '新增摄影师' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '摄影师 ID' }), { target: { value: 'P017' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '常驻城市' }), { target: { value: '佛山' } });
+    fireEvent.change(screen.getByLabelText('单场报价'), { target: { value: '800' } });
+    fireEvent.change(screen.getByLabelText('评分'), { target: { value: '4.6' } });
+    fireEvent.change(screen.getByLabelText('沉睡天数'), { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '技能标签' }), { target: { value: '跑步|冲线' } });
+    fireEvent.change(screen.getByLabelText('可接单'), { target: { value: 'yes' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存摄影师' }));
+    expect(await screen.findByText('P017')).toBeInTheDocument();
+    expect(screen.getByText('共 17 行')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '新增摄影师' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '摄影师 ID' }), { target: { value: 'P001' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '常驻城市' }), { target: { value: '佛山' } });
+    fireEvent.change(screen.getByLabelText('单场报价'), { target: { value: '800' } });
+    fireEvent.change(screen.getByLabelText('评分'), { target: { value: '4.6' } });
+    fireEvent.change(screen.getByLabelText('沉睡天数'), { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '技能标签' }), { target: { value: '跑步' } });
+    fireEvent.change(screen.getByLabelText('可接单'), { target: { value: 'yes' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存摄影师' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('ID 已存在');
+    expect(screen.getByText('共 17 行')).toBeInTheDocument();
+  });
 });
