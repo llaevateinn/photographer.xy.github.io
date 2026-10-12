@@ -18,7 +18,18 @@ export default function StaffingPage() {
   const { state, dispatch, staffing } = useAppState();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: 'event_id' | 'city' | 'event_date' | 'recommended' | 'estimatedCost' | 'budget' | 'overBudget'; direction: 'ascending' | 'descending' } | null>(null);
   const modified = Object.keys(DEFAULT_PARAMS).some((key) => state.params[key as keyof typeof DEFAULT_PARAMS] !== DEFAULT_PARAMS[key as keyof typeof DEFAULT_PARAMS]);
+  const sortedStaffing = sort ? [...staffing].sort((left, right) => {
+    const a = left.event[sort.key as 'event_id' | 'city' | 'event_date'] ?? left[sort.key as 'recommended' | 'estimatedCost' | 'budget' | 'overBudget'];
+    const b = right.event[sort.key as 'event_id' | 'city' | 'event_date'] ?? right[sort.key as 'recommended' | 'estimatedCost' | 'budget' | 'overBudget'];
+    const comparison = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'zh-CN', { numeric: true });
+    return sort.direction === 'ascending' ? comparison : -comparison;
+  }) : staffing;
+
+  function toggleSort(key: NonNullable<typeof sort>['key']) {
+    setSort((current) => ({ key, direction: current?.key === key && current.direction === 'ascending' ? 'descending' : 'ascending' }));
+  }
 
   function download() {
     const rows = staffing.map(({ event, recommended, baseline, estimatedCost, budget, overBudget }) => ({
@@ -39,7 +50,9 @@ export default function StaffingPage() {
       <button className="button button-secondary reset-params" onClick={() => dispatch({ type: 'params', value: { ...DEFAULT_PARAMS } })}>恢复默认参数</button>
     </aside>
     <div className="results-panel"><div className="results-heading"><div><h2>摄影师需求测算</h2><span>点击赛事行，查看代入数字的完整公式</span></div><button className="button button-primary" onClick={download}>下载 staffing_plan.csv ↓</button></div>
-      <div className="table-scroll staffing-table"><table><thead><tr><th>赛事</th><th>城市 / 日期</th><th>推荐人数</th><th>预计成本</th><th>预算上限</th><th>预算状态</th></tr></thead><tbody>{staffing.map((row) => {
+      <div className="table-scroll staffing-table"><table><thead><tr>{([
+        ['赛事', 'event_id'], ['城市 / 日期', 'city'], ['推荐人数', 'recommended'], ['预计成本', 'estimatedCost'], ['预算上限', 'budget'], ['预算状态', 'overBudget'],
+      ] as const).map(([label, key]) => <th key={key} aria-sort={sort?.key === key ? sort.direction : 'none'}><button className="sort-button" type="button" aria-label={`按${label}排序`} onClick={() => toggleSort(key)}>{label}<span aria-hidden="true">{sort?.key === key ? sort.direction === 'ascending' ? ' ↑' : ' ↓' : ' ↕'}</span></button></th>)}</tr></thead><tbody>{sortedStaffing.map((row) => {
         const difference = row.recommended - row.baseline;
         return <Fragment key={row.event.event_id}><tr className="expandable-row" onClick={() => setExpanded(expanded === row.event.event_id ? null : row.event.event_id)} aria-expanded={expanded === row.event.event_id}>
           <td><b>{row.event.event_id}</b><span className="cell-sub">{row.event.participants.toLocaleString()} 人 · {row.event.course_km} km</span></td><td>{row.event.city}<span className="cell-sub">{row.event.event_date}</span></td>

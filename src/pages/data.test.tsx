@@ -25,4 +25,16 @@ describe('M4 data management page', () => {
     expect(screen.getByText('P001')).toBeInTheDocument();
     expect(screen.getByText('共 16 行')).toBeInTheDocument();
   });
+
+  it('sorts the event preview by a selected column in both directions', () => {
+    render(<App/>);
+    fireEvent.click(screen.getByRole('button', { name: '按参赛人数排序' }));
+    const table = screen.getByRole('table');
+    expect(table.querySelector('tbody tr')?.textContent).toContain('E003');
+    expect(table.querySelector('thead th:nth-child(5)')).toHaveAttribute('aria-sort', 'ascending');
+
+    fireEvent.click(screen.getByRole('button', { name: '按参赛人数排序' }));
+    expect(table.querySelector('tbody tr')?.textContent).toContain('E006');
+    expect(table.querySelector('thead th:nth-child(5)')).toHaveAttribute('aria-sort', 'descending');
+  });
 });

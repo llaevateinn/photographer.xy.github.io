@@ -17,6 +17,7 @@ export default function DataPage() {
   const [issues, setIssues] = useState<CsvIssue[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [sort, setSort] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const columns: { key: string; label: string; value: (row: Record<string, unknown>) => string }[] = dataset === 'events'
@@ -33,6 +34,17 @@ export default function DataPage() {
       { key: 'available', label: '可接单', value: (r) => r.available === 'yes' ? '可接单' : '暂不可接' },
     ];
   const rows = (dataset === 'events' ? state.events : state.photographers) as unknown as Record<string, unknown>[];
+  const sortedRows = sort ? [...rows].sort((left, right) => {
+    const a = left[sort.key]; const b = right[sort.key];
+    const comparison = typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(Array.isArray(a) ? a.join(' / ') : a ?? '').localeCompare(String(Array.isArray(b) ? b.join(' / ') : b ?? ''), 'zh-CN', { numeric: true });
+    return sort.direction === 'ascending' ? comparison : -comparison;
+  }) : rows;
+
+  function toggleSort(key: string) {
+    setSort((current) => ({ key, direction: current?.key === key && current.direction === 'ascending' ? 'descending' : 'ascending' }));
+  }
 
   function importText(text: string) {
     const result = dataset === 'events' ? parseEventsCsv(text) : parsePhotographersCsv(text);
@@ -73,7 +85,7 @@ export default function DataPage() {
     <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}><span className="upload-icon">↑</span><span>将 CSV 文件拖到这里，或点击 <button onClick={() => fileRef.current?.click()}>选择文件</button></span><small>CSV 表头需与当前数据字段一致；校验通过后自动重算。</small></div>
     {issues.length > 0 && <section className="validation-panel" role="alert"><div className="validation-title">CSV 校验失败 · 现有数据保持不变</div><ul>{issues.map((issue, index) => <li key={`${issue.row}-${issue.field}-${index}`}>第 {issue.row || '—'} 行 · <b>{issue.field}</b>：{issue.reason}</li>)}</ul></section>}
     <div className="table-heading"><div><h2>{dataset === 'events' ? '赛事需求表' : '摄影师供给表'}</h2><span>只读预览 · 当前生效的本地数据</span></div><span className="row-count">共 {rows.length} 行</span></div>
-    {rows.length ? <div className="table-scroll"><table><thead><tr><th aria-label="序号">#</th>{columns.map((col) => <th key={col.key}>{col.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row[columns[0].key])}><td className="table-index">{String(index + 1).padStart(2, '0')}</td>{columns.map((col) => <td key={col.key}>{col.value(row)}</td>)}</tr>)}</tbody></table></div> : <EmptyState title="暂无数据" detail="请导入 CSV 文件或恢复默认数据。"/>}
+    {rows.length ? <div className="table-scroll"><table><thead><tr><th aria-label="序号">#</th>{columns.map((col) => <th key={col.key} aria-sort={sort?.key === col.key ? sort.direction : 'none'}><button className="sort-button" type="button" aria-label={`按${col.label}排序`} onClick={() => toggleSort(col.key)}>{col.label}<span aria-hidden="true">{sort?.key === col.key ? sort.direction === 'ascending' ? ' ↑' : ' ↓' : ' ↕'}</span></button></th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={String(row[columns[0].key])}><td className="table-index">{String(index + 1).padStart(2, '0')}</td>{columns.map((col) => <td key={col.key}>{col.value(row)}</td>)}</tr>)}</tbody></table></div> : <EmptyState title="暂无数据" detail="请导入 CSV 文件或恢复默认数据。"/>}
     {pasteOpen && <Modal title={`粘贴${dataset === 'events' ? '赛事' : '摄影师'} CSV`} onClose={() => setPasteOpen(false)}><p className="modal-copy">请粘贴含完整表头的 CSV 内容。字段顺序可以调整，表头名称需保持一致。</p><pre className="csv-example">{dataset === 'events' ? 'event_id,city,event_date,participants,course_km,time_window_hours,night_race,difficulty\nE001,广州,2026-11-01,5000,42,4,no,4' : 'photographer_id,home_city,price_per_event,rating,last_active_days,skill_tags,available\nP001,广州,700,4.8,45,跑步|冲线|人像,yes'}</pre><textarea aria-label="CSV 内容" value={pasteValue} onChange={(e) => setPasteValue(e.target.value)} placeholder="在此粘贴 CSV 内容"/><div className="modal-actions"><button className="button button-secondary" onClick={() => setPasteOpen(false)}>取消</button><button className="button button-primary" onClick={() => importText(pasteValue)}>校验并替换</button></div></Modal>}
     {confirmDefault && <ConfirmDialog title="恢复全部默认数据？" message="赛事、摄影师、测算参数与召回话术将恢复为内置示例，并自动级联重算。系统会先创建一份“恢复前快照”。" confirmLabel="确认恢复" onCancel={() => setConfirmDefault(false)} onConfirm={restoreDefault}/>}
     <Toast message={toast} onDone={() => setToast(null)}/>

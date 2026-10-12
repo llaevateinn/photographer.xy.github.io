@@ -27,4 +27,14 @@ describe('M5 staffing analysis page', () => {
     expect(screen.queryByText('已修改')).not.toBeInTheDocument();
     expect(screen.getByRole('slider', { name: '精品率' })).toHaveValue('0.6');
   });
+
+  it('sorts the demand table by recommendation count', () => {
+    openStaffing();
+    const table = screen.getByRole('table');
+    fireEvent.click(screen.getByRole('button', { name: '按推荐人数排序' }));
+    expect(table.querySelector('tbody tr')?.textContent).toContain('E003');
+    expect(table.querySelector('thead th:nth-child(3)')).toHaveAttribute('aria-sort', 'ascending');
+    fireEvent.click(screen.getByRole('button', { name: '按推荐人数排序' }));
+    expect(table.querySelector('thead th:nth-child(3)')).toHaveAttribute('aria-sort', 'descending');
+  });
 });
